@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +54,23 @@ class _HomePageState extends State<HomePage> {
   final deviceNameController = TextEditingController();
 
   static const defaultServerUrl = 'https://agentbackend-5nca.onrender.com';
+
+  bool showSecret = false;
+
+  // Permission keys and labels
+  final Map<String, String> permissionLabels = {
+    'open_url': 'Open URLs',
+    'open_app': 'Open Apps',
+    'start_music': 'Start Music',
+    'lock_pc': 'Lock PC',
+    'shutdown_pc': 'Shutdown PC',
+    'restart_pc': 'Restart PC',
+    'notifications': 'Read Notifications',
+    'battery': 'Battery Status',
+  };
+
+  // Current permission state (loaded/saved)
+  Map<String, bool> permissions = {};
 
   bool connected = false;
   bool registered = false;
@@ -122,6 +140,12 @@ class _HomePageState extends State<HomePage> {
 
     secretController.text = prefs.getString('secret') ?? '';
 
+    // load permissions
+    permissions = {};
+    for (final key in permissionLabels.keys) {
+      permissions[key] = prefs.getBool('perm_$key') ?? true;
+    }
+
     deviceNameController.text =
         prefs.getString('deviceName') ?? defaultDeviceName();
 
@@ -147,6 +171,11 @@ class _HomePageState extends State<HomePage> {
       'deviceName',
       deviceNameController.text.trim(),
     );
+
+    // save permissions
+    for (final entry in permissions.entries) {
+      await prefs.setBool('perm_${entry.key}', entry.value);
+    }
   }
 
   // ============================================================
@@ -1077,6 +1106,93 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _copyLogsToClipboard() async {
+    final text = logs.reversed.join('\n');
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Activity log copied to clipboard')),
+      );
+    }
+  }
+
+  Future<void> _copySecretToClipboard() async {
+    await Clipboard.setData(ClipboardData(text: secretController.text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Secret copied to clipboard')),
+      );
+    }
+  }
+
+  void _resetToDefaults() {
+    serverUrlController.text = defaultServerUrl;
+    for (final key in permissionLabels.keys) {
+      permissions[key] = true;
+    }
+    _saveConfig();
+    if (mounted) setState(() {});
+    _log('🔁 Reset configuration to defaults');
+  }
+
+  Future<void> _showPermissionsDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Permissions'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: permissionLabels.keys.map((key) {
+                return StatefulBuilder(
+                  builder: (context, setLocalState) {
+                    return SwitchListTile(
+                      title: Text(permissionLabels[key]!),
+                      value: permissions[key] ?? true,
+                      onChanged: (v) {
+                        permissions[key] = v;
+                        setLocalState(() {});
+                        setState(() {});
+                      },
+                    );
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _resetToDefaults();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Reset'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                _saveConfig();
+                Navigator.of(context).pop();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Permissions saved')),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // ============================================================
   // UI
   // ============================================================
@@ -1093,6 +1209,16 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Alexa Device Bridge'),
         actions: [
+          IconButton(
+            tooltip: 'Permissions',
+            icon: const Icon(Icons.security),
+            onPressed: _showPermissionsDialog,
+          ),
+          IconButton(
+            tooltip: 'Reset defaults',
+            icon: const Icon(Icons.restore),
+            onPressed: _resetToDefaults,
+          ),
           Icon(
             statusIcon,
             color: registered
@@ -1135,11 +1261,30 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 10),
               TextField(
                 controller: secretController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: !showSecret,
+                decoration: InputDecoration(
                   labelText: 'Shared Secret',
-                  prefixIcon: Icon(Icons.key),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.key),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: showSecret ? 'Hide secret' : 'Show secret',
+                        icon: Icon(showSecret ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () {
+                          setState(() {
+                            showSecret = !showSecret;
+                          });
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Copy secret',
+                        icon: const Icon(Icons.copy),
+                        onPressed: _copySecretToClipboard,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -1188,6 +1333,11 @@ class _HomePageState extends State<HomePage> {
                     tooltip: 'Clear logs',
                     onPressed: _clearLogs,
                     icon: const Icon(Icons.delete_outline),
+                  ),
+                  IconButton(
+                    tooltip: 'Copy logs',
+                    onPressed: logs.isEmpty ? null : _copyLogsToClipboard,
+                    icon: const Icon(Icons.copy_all),
                   ),
                 ],
               ),
