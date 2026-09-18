@@ -28,6 +28,16 @@ class BridgeApp extends StatelessWidget {
   }
 }
 
+// Backwards-compatible test helper: provide `MyApp` constructor used by tests.
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const BridgeApp();
+  }
+}
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -42,7 +52,7 @@ class _HomePageState extends State<HomePage> {
   final secretController = TextEditingController();
   final deviceNameController = TextEditingController();
 
-  static const defaultServerUrl = 'https://agentbackend-x3s2.onrender.com';
+  static const defaultServerUrl = 'https://agentbackend-5nca.onrender.com';
 
   bool connected = false;
   bool registered = false;
@@ -210,7 +220,7 @@ class _HomePageState extends State<HomePage> {
       socket = IO.io(
         url,
         IO.OptionBuilder()
-            .setTransports(['websocket', 'polling'])
+            .setTransports(['polling'])
             .disableAutoConnect()
             .enableReconnection()
             .setReconnectionAttempts(20)
