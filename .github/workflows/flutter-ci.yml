@@ -104,12 +104,13 @@ jobs:
       - name: Package Windows build into zip
         shell: powershell
         run: |
-          if (Test-Path 'build\windows\runner\Release') {
-            New-Item -ItemType Directory -Path 'build\artifacts' -Force | Out-Null
-            Compress-Archive -Path 'build\windows\runner\Release\*' -DestinationPath 'build\artifacts\windows-build.zip' -Force
+          New-Item -ItemType Directory -Path 'build\artifacts' -Force | Out-Null
+          $releaseDir = Get-ChildItem -Path 'build\windows' -Directory -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ieq 'Release' } | Select-Object -First 1
+          if ($null -ne $releaseDir) {
+            Write-Output "Found Release folder: $($releaseDir.FullName)"
+            Compress-Archive -Path (Join-Path $releaseDir.FullName '*') -DestinationPath 'build\artifacts\windows-build.zip' -Force
           } else {
-            New-Item -ItemType Directory -Path 'build\artifacts' -Force | Out-Null
-            Write-Output 'No windows release folder found; creating placeholder zip'
+            Write-Output 'No windows Release folder found; creating placeholder zip'
             $zip = 'build\artifacts\windows-build.zip'
             $tmp = Join-Path $env:TEMP ("winpack-" + [Guid]::NewGuid().ToString())
             New-Item -ItemType Directory -Path $tmp | Out-Null
