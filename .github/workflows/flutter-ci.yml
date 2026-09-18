@@ -46,7 +46,7 @@ jobs:
           flutter test --no-pub --enable-experiment=dot-shorthands 2>&1 | tee test.log || true
 
       - name: Upload test log
-        uses: actions/upload-artifact@v4.1.2
+        uses: actions/upload-artifact@v4
         with:
           name: test-log
           path: test.log
@@ -63,13 +63,13 @@ jobs:
           zip -j build/artifacts/android-build.zip build/app/outputs/flutter-apk/*.apk || true
 
       - name: Upload Android build artifact (zip)
-        uses: actions/upload-artifact@v4.1.2
+        uses: actions/upload-artifact@v4
         with:
           name: android-build
           path: build/artifacts/android-build.zip
 
       - name: Upload Android build log
-        uses: actions/upload-artifact@v4.1.2
+        uses: actions/upload-artifact@v4
         with:
           name: android-build-log
           path: build-android.log
@@ -154,14 +154,14 @@ jobs:
 
       - name: Upload Windows build artifact (zip)
         if: always()
-        uses: actions/upload-artifact@v4.1.2
+        uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: build/artifacts/windows-build.zip
 
       - name: Upload Windows build log
         if: always()
-        uses: actions/upload-artifact@v4.1.2
+        uses: actions/upload-artifact@v4
         with:
           name: windows-build-log
           path: build-windows.log
@@ -208,13 +208,13 @@ jobs:
           fi
 
       - name: Upload Linux build artifact (zip)
-        uses: actions/upload-artifact@v4.1.2
+        uses: actions/upload-artifact@v4
         with:
           name: linux-build
           path: build/artifacts/linux-build.zip
 
       - name: Upload Linux build log
-        uses: actions/upload-artifact@v4.1.2
+        uses: actions/upload-artifact@v4
         with:
           name: linux-build-log
           path: build-linux.log
