@@ -81,11 +81,12 @@ jobs:
           cache: true
 
       - name: Ensure Windows platform and dependencies
+        shell: powershell
         run: |
-          flutter config --enable-windows-desktop || true
-          if [ ! -d "windows" ]; then
-            flutter create --platforms=windows . || true
-          fi
+          flutter config --enable-windows-desktop
+          if (!(Test-Path -Path windows)) {
+            flutter create --platforms=windows .
+          }
           flutter pub get
 
       - name: Build Windows (release)
