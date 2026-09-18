@@ -111,18 +111,39 @@ jobs:
         shell: powershell
         run: |
           New-Item -ItemType Directory -Path 'build\artifacts' -Force | Out-Null
-          $releaseDir = Get-ChildItem -Path 'build\windows' -Directory -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ieq 'Release' } | Select-Object -First 1
-          if ($null -ne $releaseDir) {
-            Write-Output "Found Release folder: $($releaseDir.FullName)"
-            Compress-Archive -Path (Join-Path $releaseDir.FullName '*') -DestinationPath 'build\artifacts\windows-build.zip' -Force
+          $candidates = @(
+            'build\windows\x64\runner\Release',
+            'build\windows\runner\Release',
+            'build\windows\Release',
+            'build\windows\x64\Release'
+          )
+
+          $found = $null
+          foreach ($p in $candidates) {
+            if (Test-Path $p) {
+              $found = (Get-Item $p)
+              Write-Output "Selecting release folder: $p"
+              break
+            }
+          }
+
+          if ($null -ne $found) {
+            Write-Output "Found Release folder: $($found.FullName)"
+            Write-Output 'Contents:'
+            Get-ChildItem -Path $found.FullName -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+            Compress-Archive -Path (Join-Path $found.FullName '*') -DestinationPath 'build\artifacts\windows-build.zip' -Force
+            Write-Output 'Zip created:'
+            Get-Item 'build\artifacts\windows-build.zip' | Format-List Name, FullName, Length
           } else {
-            Write-Output 'No windows Release folder found; creating placeholder zip'
+            Write-Output 'No Release folder found under usual paths; creating placeholder zip'
             $zip = 'build\artifacts\windows-build.zip'
             $tmp = Join-Path $env:TEMP ("winpack-" + [Guid]::NewGuid().ToString())
             New-Item -ItemType Directory -Path $tmp | Out-Null
             New-Item -Path (Join-Path $tmp 'placeholder.txt') -ItemType File -Force | Out-Null
             Compress-Archive -Path (Join-Path $tmp '*') -DestinationPath $zip -Force
             Remove-Item -Recurse -Force $tmp
+            Write-Output 'Placeholder zip created'
+            Get-Item $zip | Format-List Name, FullName, Length
           }
 
       - name: "Debug: show created windows zip"
