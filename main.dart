@@ -42,7 +42,7 @@ class _HomePageState extends State<HomePage> {
   final secretController = TextEditingController();
   final deviceNameController = TextEditingController();
 
-  static const defaultServerUrl = 'https://agentbackend-x3s2.onrender.com';
+  static const defaultServerUrl = 'https://agentbackend-5nca.onrender.com';
 
   bool connected = false;
   bool registered = false;
@@ -210,7 +210,7 @@ class _HomePageState extends State<HomePage> {
       socket = IO.io(
         url,
         IO.OptionBuilder()
-            .setTransports(['websocket', 'polling'])
+            .setTransports(['polling', 'websocket'])
             .disableAutoConnect()
             .enableReconnection()
             .setReconnectionAttempts(20)
