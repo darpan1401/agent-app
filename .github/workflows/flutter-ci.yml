@@ -101,7 +101,7 @@ jobs:
         run: |
           flutter build windows --release --enable-experiment=dot-shorthands *>&1 | Tee-Object -FilePath build-windows.log
 
-      - name: Debug: list build\windows tree
+      - name: "Debug: list build\\windows tree"
         shell: powershell
         run: |
           Write-Output '--- build/windows tree ---'
@@ -125,7 +125,7 @@ jobs:
             Remove-Item -Recurse -Force $tmp
           }
 
-      - name: Debug: show created windows zip
+      - name: "Debug: show created windows zip"
         shell: powershell
         run: |
           $zipPath = 'build\artifacts\windows-build.zip'
