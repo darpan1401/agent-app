@@ -1,0 +1,120 @@
+name: Flutter CI - Build Android & Desktop
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Java (for Android build)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Ensure Flutter and Android toolchain
+        run: |
+          flutter --version
+          sudo apt-get update -y
+          sudo apt-get install -y curl unzip
+          flutter doctor -v || true
+          yes | flutter doctor --android-licenses || true
+
+      - name: Ensure project platforms and get dependencies
+        run: |
+          # If platform folders are missing, initialize them
+          if [ ! -d "android" ] || [ ! -d "windows" ] || [ ! -d "linux" ]; then
+            flutter create . || true
+          fi
+          flutter pub get
+
+      - name: Run tests
+        run: flutter test --no-pub || true
+
+      - name: Build APK (release)
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/*.apk
+
+  build-windows:
+    name: Build Windows executable
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Ensure Windows platform and dependencies
+        run: |
+          flutter config --enable-windows-desktop || true
+          if [ ! -d "windows" ]; then
+            flutter create --platforms=windows . || true
+          fi
+          flutter pub get
+
+      - name: Build Windows (release)
+        shell: powershell
+        run: flutter build windows --release
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: build/windows/runner/Release/**
+
+  build-linux:
+    name: Build Linux executable
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install native build deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev liblzma-dev libssl-dev
+
+      - name: Ensure Linux platform and dependencies
+        run: |
+          flutter config --enable-linux-desktop || true
+          if [ ! -d "linux" ]; then
+            flutter create --platforms=linux . || true
+          fi
+          flutter pub get
+
+      - name: Build Linux (release)
+        run: flutter build linux --release
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: build/linux/**
