@@ -239,7 +239,7 @@ class _HomePageState extends State<HomePage> {
       socket = IO.io(
         url,
         IO.OptionBuilder()
-            .setTransports(['polling', 'websocket'])
+            .setTransports(['polling'])
             .disableAutoConnect()
             .enableReconnection()
             .setReconnectionAttempts(20)
