@@ -104,12 +104,18 @@ jobs:
       - name: Package Windows build into zip
         shell: powershell
         run: |
-          if (Test-Path build\windows\runner\Release) {
-            Compress-Archive -Path build\windows\runner\Release\* -DestinationPath build\artifacts\windows-build.zip -Force
+          if (Test-Path 'build\windows\runner\Release') {
+            New-Item -ItemType Directory -Path 'build\artifacts' -Force | Out-Null
+            Compress-Archive -Path 'build\windows\runner\Release\*' -DestinationPath 'build\artifacts\windows-build.zip' -Force
           } else {
-            New-Item -ItemType Directory -Path build\artifacts -Force | Out-Null
-            Write-Output 'No windows release folder found; creating empty zip'
-            Compress-Archive -Path $null -DestinationPath build\artifacts\windows-build.zip -Force || true
+            New-Item -ItemType Directory -Path 'build\artifacts' -Force | Out-Null
+            Write-Output 'No windows release folder found; creating placeholder zip'
+            $zip = 'build\artifacts\windows-build.zip'
+            $tmp = Join-Path $env:TEMP ("winpack-" + [Guid]::NewGuid().ToString())
+            New-Item -ItemType Directory -Path $tmp | Out-Null
+            New-Item -Path (Join-Path $tmp 'placeholder.txt') -ItemType File -Force | Out-Null
+            Compress-Archive -Path (Join-Path $tmp '*') -DestinationPath $zip -Force
+            Remove-Item -Recurse -Force $tmp
           }
 
       - name: Upload Windows build artifact (zip)
