@@ -108,7 +108,16 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
 
-    serverUrlController.text = prefs.getString('serverUrl') ?? defaultServerUrl;
+    // Load saved server URL, but migrate old Render hostnames to the new URL
+    var savedUrl = prefs.getString('serverUrl');
+    if (savedUrl != null && savedUrl.contains('agentbackend-x3s2.onrender.com')) {
+      // Replace the old host with the current default
+      savedUrl = defaultServerUrl;
+      await prefs.setString('serverUrl', savedUrl);
+      _log('⚙️ Migrated saved server URL to $savedUrl');
+    }
+
+    serverUrlController.text = savedUrl ?? defaultServerUrl;
 
     secretController.text = prefs.getString('secret') ?? '';
 
