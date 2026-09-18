@@ -55,11 +55,18 @@ jobs:
         run: |
           flutter build apk --release --enable-experiment=dot-shorthands 2>&1 | tee build-android.log
 
-      - name: Upload APK artifact
+      - name: Package APK(s) into zip
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y zip || true
+          mkdir -p build/artifacts || true
+          zip -j build/artifacts/android-build.zip build/app/outputs/flutter-apk/*.apk || true
+
+      - name: Upload Android build artifact (zip)
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: build/app/outputs/flutter-apk/*.apk
+          name: android-build
+          path: build/artifacts/android-build.zip
 
       - name: Upload Android build log
         uses: actions/upload-artifact@v4
@@ -94,11 +101,22 @@ jobs:
         run: |
           flutter build windows --release --enable-experiment=dot-shorthands *>&1 | Tee-Object -FilePath build-windows.log
 
-      - name: Upload Windows artifact
+      - name: Package Windows build into zip
+        shell: powershell
+        run: |
+          if (Test-Path build\windows\runner\Release) {
+            Compress-Archive -Path build\windows\runner\Release\* -DestinationPath build\artifacts\windows-build.zip -Force
+          } else {
+            New-Item -ItemType Directory -Path build\artifacts -Force | Out-Null
+            Write-Output 'No windows release folder found; creating empty zip'
+            Compress-Archive -Path $null -DestinationPath build\artifacts\windows-build.zip -Force || true
+          }
+
+      - name: Upload Windows build artifact (zip)
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: build/windows/runner/Release/**
+          path: build/artifacts/windows-build.zip
 
       - name: Upload Windows build log
         uses: actions/upload-artifact@v4
@@ -136,11 +154,22 @@ jobs:
         run: |
           flutter build linux --release --enable-experiment=dot-shorthands 2>&1 | tee build-linux.log
 
-      - name: Upload Linux artifact
+      - name: Package Linux build into zip
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y zip || true
+          mkdir -p build/artifacts || true
+          if [ -d "build/linux" ]; then
+            zip -r build/artifacts/linux-build.zip build/linux || true
+          else
+            zip -r build/artifacts/linux-build.zip . || true
+          fi
+
+      - name: Upload Linux build artifact (zip)
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: build/linux/**
+          path: build/artifacts/linux-build.zip
 
       - name: Upload Linux build log
         uses: actions/upload-artifact@v4
