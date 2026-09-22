@@ -344,6 +344,8 @@ class _HomePageState extends State<HomePage> {
         _log('❌ Socket error: $error');
       });
 
+      socket!.on('command', _receiveCommand);
+
       socket!.onDisconnect((reason) {
         _log('🔴 Socket disconnected: $reason');
 
@@ -470,10 +472,45 @@ class _HomePageState extends State<HomePage> {
   // COMMAND ROUTER
   // ============================================================
 
+  String? _permissionForCommand(String type) {
+    switch (type) {
+      case 'open_chrome':
+      case 'open_vscode':
+      case 'open_chatgpt':
+        return 'open_app';
+      case 'open_url':
+        return 'open_url';
+      case 'open_app':
+        return 'open_app';
+      case 'start_music':
+        return 'start_music';
+      case 'lock_pc':
+        return 'lock_pc';
+      case 'shutdown_pc':
+        return 'shutdown_pc';
+      case 'restart_pc':
+        return 'restart_pc';
+      case 'check_notifications':
+        return 'notifications';
+      case 'battery_status':
+        return 'battery';
+      default:
+        return null;
+    }
+  }
+
   Future<Map<String, dynamic>> _handleCommand(
     String type,
     Map<String, dynamic> payload,
   ) async {
+    final permission = _permissionForCommand(type);
+    if (permission != null && !(permissions[permission] ?? false)) {
+      return {
+        'success': false,
+        'speech': 'That command is disabled in this device permissions settings.',
+      };
+    }
+
     switch (type) {
       case 'ping':
         return {
