@@ -560,9 +560,9 @@ class _HomePageState extends State<HomePage> {
 
       case 'check_notifications':
         return {
-          'success': true,
+          'success': false,
           'speech':
-              'Notification reading is not configured on this device yet.',
+              'Windows notification reading is not available in this app yet.',
         };
 
       case 'battery_status':
