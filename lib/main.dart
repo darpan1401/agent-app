@@ -29,6 +29,16 @@ class BridgeApp extends StatelessWidget {
   }
 }
 
+// Backwards-compatible wrapper used by tests and some templates.
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const BridgeApp();
+  }
+}
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
