@@ -1,0 +1,115 @@
+name: CI Build and Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Ensure platforms
+        run: flutter create .
+      - name: Patch Android manifest and add network security
+        run: |
+          set -e
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if [ -f "$MANIFEST" ]; then
+            # insert INTERNET permission if missing
+            if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
+              sed -i 's@<manifest@<manifest\n    xmlns:android="http://schemas.android.com/apk/res/android"@' "$MANIFEST" || true
+              sed -i '1,60s@<application@<uses-permission android:name="android.permission.INTERNET" />\n\n<application@' "$MANIFEST" || true
+            fi
+            # add networkSecurityConfig attribute to application tag if not present
+            if ! grep -q 'networkSecurityConfig' "$MANIFEST"; then
+              sed -i 's@<application@<application android:networkSecurityConfig="@xml/network_security_config"@' "$MANIFEST" || true
+            fi
+          fi
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/network_security_config.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <network-security-config>
+            <base-config cleartextTrafficPermitted="true" />
+            <domain-config cleartextTrafficPermitted="true">
+              <domain includeSubdomains="true">localhost</domain>
+            </domain-config>
+          </network-security-config>
+          EOF
+      - name: Build APK (release)
+        run: flutter build apk --release
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/*.apk
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Windows
+        run: flutter build windows --release
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: build/windows/runner/Release/*.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Linux
+        run: flutter build linux --release
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-app
+          path: build/linux/x64/release/bundle/*
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build-android, build-windows, build-linux]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: artifacts
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+          path: artifacts
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-app
+          path: artifacts
+      - name: Create GitHub Release and upload binaries
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ github.run_number }}-build
+          files: |
+            artifacts/android-apk/*.apk
+            artifacts/windows-exe/*.exe
+            artifacts/linux-app/*
